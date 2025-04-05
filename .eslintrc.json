@@ -1,0 +1,17 @@
+{
+  "extends": ["react-app"],
+  "rules": {
+    "no-trailing-spaces": "off",
+    "comma-dangle": "off",
+    "react/function-component-definition": "off",
+    "arrow-parens": "off",
+    "react/self-closing-comp": "off",
+    "react/button-has-type": "off",
+    "eol-last": "off",
+    "react/forbid-prop-types": "off",
+    "object-curly-newline": "off",
+    "operator-linebreak": "off",
+    "react/jsx-closing-bracket-location": "off",
+    "no-nested-ternary": "off"
+  }
+} 

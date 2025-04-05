@@ -1,0 +1,348 @@
+# 動画視聴トラッキングSaaSの実装とデプロイガイド
+
+## プロジェクト構造
+
+```
+video-tracking-saas/
+├── client/                  # フロントエンドのReactアプリケーション
+│   ├── public/
+│   ├── src/
+│   │   ├── components/      # Reactコンポーネント
+│   │   ├── styles/          # CSSスタイルシート
+│   │   ├── App.js           # メインアプリケーション
+│   │   └── index.js         # エントリーポイント
+│   ├── package.json
+│   └── .env                 # 環境変数設定ファイル
+│
+├── server/                  # バックエンドのNode.js/Expressアプリケーション
+│   ├── config/              # 設定ファイル
+│   ├── controllers/         # APIコントローラー
+│   ├── middleware/          # ミドルウェア関数
+│   ├── models/              # データベースモデル（PostgreSQL用）
+│   ├── routes/              # API ルート定義
+│   ├── app.js               # Express設定
+│   ├── server.js            # メインサーバーファイル
+│   ├── package.json
+│   └── .env                 # 環境変数設定ファイル
+│
+└── docker-compose.yml       # Docker Compose設定（開発環境用）
+```
+
+## 実装手順
+
+### 1. 開発環境のセットアップ
+
+#### データベースのセットアップ
+
+PostgreSQLデータベースをセットアップします。Docker Composeを使用すると簡単です。
+
+```yaml
+# docker-compose.yml
+version: '3'
+
+services:
+  postgres:
+    image: postgres:14
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: videotracking
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "8080:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+```
+
+データベーススキーマを作成します（`server/config/init-db.sql`）:
+```sql
+-- データベーススキーマをセットアップ
+-- 上記で定義したSQLスキーマを使用
+```
+
+### 2. バックエンドの実装
+
+#### プロジェクト初期化
+
+```bash
+mkdir -p server
+cd server
+npm init -y
+npm install express pg bcrypt jsonwebtoken cors dotenv
+npm install nodemon --save-dev
+```
+
+#### 環境変数の設定
+
+```
+# server/.env
+PORT=3001
+DATABASE_URL=postgres://postgres:password@localhost:5432/videotracking
+JWT_SECRET=your_jwt_secret_key
+NODE_ENV=development
+```
+
+#### サーバー起動スクリプトの追加
+
+```json
+// package.json
+{
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  }
+}
+```
+
+#### APIの実装
+
+前述のバックエンドコードを対応するファイルに実装します。
+- `app.js` - Expressアプリケーション設定
+- `server.js` - サーバー起動
+- `middleware/auth.js` - 認証ミドルウェア
+- `controllers/authController.js` - 認証関連API
+- `controllers/courseController.js` - コース管理API
+- `controllers/videoController.js` - 動画管理API
+- `controllers/viewLogController.js` - 視聴ログAPI
+- `controllers/statsController.js` - 統計情報API
+
+### 3. フロントエンドの実装
+
+#### プロジェクト初期化
+
+```bash
+npx create-react-app client
+cd client
+npm install react-router-dom axios
+```
+
+#### 環境変数の設定
+
+```
+# client/.env
+REACT_APP_API_URL=http://localhost:3001/api
+```
+
+#### コンポーネントの実装
+
+前述のフロントエンドコードを対応するファイルに実装します。
+- `src/App.js` - メインアプリケーション
+- `src/components/Login.jsx` - ログイン画面
+- `src/components/Register.jsx` - ユーザー登録画面
+- `src/components/AdminDashboard.jsx` - 管理者ダッシュボード
+- `src/components/ViewerDashboard.jsx` - 視聴者ダッシュボード
+- `src/components/VideoPlayer.jsx` - 動画プレーヤーコンポーネント
+- `src/components/CourseView.jsx` - コース視聴画面
+- `src/App.css` - スタイルシート
+
+### 4. 動画プレーヤーの外部ライブラリ設定
+
+#### YouTube API のロード
+
+YouTube 動画の再生状態を検出するために、YouTube IFrame Player API を読み込みます。`public/index.html`に以下を追加します：
+
+```html
+<!-- YouTube Player API -->
+<script src="https://www.youtube.com/iframe_api"></script>
+```
+
+#### Vimeo Player API のインストール
+
+```bash
+cd client
+npm install @vimeo/player
+```
+
+`src/components/VideoPlayer.jsx`で以下のようにインポートします：
+
+```javascript
+import Vimeo from '@vimeo/player';
+```
+
+### 5. 開発環境での実行
+
+#### バックエンドの起動
+
+```bash
+cd server
+npm run dev
+```
+
+#### フロントエンドの起動
+
+```bash
+cd client
+npm start
+```
+
+ブラウザで `http://localhost:3000` にアクセスすると、アプリケーションが表示されます。
+
+## デプロイ方法
+
+### 1. クラウドサービスを利用したデプロイ
+
+#### バックエンドのデプロイ（Heroku の例）
+
+1. Heroku CLI をインストールしてログイン
+   ```bash
+   npm install -g heroku
+   heroku login
+   ```
+
+2. アプリケーションを作成
+   ```bash
+   cd server
+   heroku create video-tracking-api
+   ```
+
+3. PostgreSQL アドオンを追加
+   ```bash
+   heroku addons:create heroku-postgresql:hobby-dev
+   ```
+
+4. 環境変数の設定
+   ```bash
+   heroku config:set JWT_SECRET=your_secure_jwt_secret
+   heroku config:set NODE_ENV=production
+   ```
+
+5. デプロイ
+   ```bash
+   git subtree push --prefix server heroku main
+   ```
+
+#### フロントエンドのデプロイ（Netlify/Vercel の例）
+
+1. 本番用の環境変数を設定（`.env.production`）
+   ```
+   REACT_APP_API_URL=https://your-api-url.herokuapp.com/api
+   ```
+
+2. ビルドの作成
+   ```bash
+   cd client
+   npm run build
+   ```
+
+3. Netlify CLI を使用してデプロイ
+   ```bash
+   npm install -g netlify-cli
+   netlify deploy --prod
+   ```
+
+### 2. Docker を使用したデプロイ
+
+#### Docker コンテナ化
+
+`Dockerfile` をプロジェクトのルートに作成：
+
+```dockerfile
+# バックエンド用のステージ
+FROM node:16 AS server-build
+WORKDIR /app/server
+COPY server/package*.json ./
+RUN npm install
+COPY server ./
+RUN npm run build
+
+# フロントエンド用のステージ
+FROM node:16 AS client-build
+WORKDIR /app/client
+COPY client/package*.json ./
+RUN npm install
+COPY client ./
+RUN npm run build
+
+# 実行用のステージ
+FROM node:16-alpine
+WORKDIR /app
+COPY --from=server-build /app/server ./server
+COPY --from=client-build /app/client/build ./client/build
+
+# 静的ファイルを提供するように Express を設定
+RUN echo "app.use(express.static(path.join(__dirname, '../client/build')));" >> ./server/app.js
+RUN echo "app.get('*', (req, res) => { res.sendFile(path.join(__dirname, '../client/build', 'index.html')); });" >> ./server/app.js
+
+WORKDIR /app/server
+EXPOSE 3001
+CMD ["npm", "start"]
+```
+
+`docker-compose.prod.yml` を作成：
+
+```yaml
+version: '3'
+
+services:
+  app:
+    build: .
+    ports:
+      - "80:3001"
+    environment:
+      - DATABASE_URL=postgres://postgres:password@db:5432/videotracking
+      - JWT_SECRET=your_secure_jwt_secret
+      - NODE_ENV=production
+    depends_on:
+      - db
+
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: videotracking
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+```
+
+#### デプロイ実行
+
+```bash
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+## カスタマイズのヒント
+
+### 1. 動画プラットフォームの追加
+
+新しい動画プラットフォームをサポートするには、以下の手順を実施します：
+
+1. `VideoPlayer.jsx` コンポーネントに新しいプラットフォームの埋め込みロジックを追加
+2. `background.js`（ブラウザ拡張機能）に新しいプラットフォームの検出ロジックを追加
+3. 必要に応じて外部 API や SDK をインポート
+
+### 2. 視聴分析機能の拡張
+
+より詳細な視聴分析を提供するには、以下の機能が有効です：
+
+1. ヒートマップ表示（どの部分が多く視聴されているか）
+2. ユーザーセグメント別の視聴パターン分析
+3. 視聴完了率の予測モデル
+
+### 3. セキュリティ強化
+
+セキュリティを強化するための対策：
+
+1. HTTPS の強制使用
+2. CSP (Content Security Policy) の実装
+3. レート制限の導入
+4. 定期的なセキュリティ監査
+
+## まとめ
+
+このガイドに従って実装することで、動画視聴時間を記録・分析するシンプルながら機能的な SaaS を構築できます。ニーズに合わせてカスタマイズし、機能を拡張していくことが可能です。
